@@ -9,6 +9,7 @@ use Cake\Http\Exception\NotFoundException;
 use Queue\Queue\AddFromBackendInterface;
 use Queue\Queue\AddInterface;
 use Queue\Queue\TaskFinder;
+use Queue\Queue\TaskMetadata;
 
 /**
  * @property \Queue\Model\Table\QueuedJobsTable $QueuedJobs
@@ -66,9 +67,7 @@ class QueueController extends QueueAppController {
 
 		$taskDescriptions = [];
 		foreach ($tasks as $task => $className) {
-			/** @var \Queue\Queue\Task $taskObject */
-			$taskObject = new $className();
-			$taskDescriptions[$task] = $taskObject->description();
+			$taskDescriptions[$task] = TaskMetadata::fromClass($className)->description;
 		}
 
 		$servers = $QueueProcesses->serverList();
@@ -132,8 +131,8 @@ class QueueController extends QueueAppController {
 			throw new NotFoundException('Class not found for job `' . $job . '`');
 		}
 
-		$object = new $className();
-		if ($object instanceof AddInterface) {
+		if (is_subclass_of($className, AddInterface::class)) {
+			$object = new $className();
 			$object->add(null);
 		} else {
 			$this->QueuedJobs->createJob($job);

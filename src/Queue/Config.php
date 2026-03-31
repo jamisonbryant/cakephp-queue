@@ -120,7 +120,7 @@ class Config {
 	}
 
 	/**
-	 * @param array<string> $tasks
+	 * @param array<string, class-string<\Queue\Queue\Task>> $tasks
 	 *
 	 * @throws \RuntimeException
 	 *
@@ -134,13 +134,12 @@ class Config {
 		foreach ($tasks as $task => $className) {
 			[$pluginName, $taskName] = pluginSplit($task);
 
-			/** @var \Queue\Queue\Task $taskObject */
-			$taskObject = new $className();
+			$taskMeta = TaskMetadata::fromClass($className);
 
 			// Get task-specific config overrides from Configure
 			$taskConfig = $taskOverrides[$task] ?? [];
 
-			$taskTimeout = $taskConfig['timeout'] ?? $taskObject->timeout ?? $defaultTimeout;
+			$taskTimeout = $taskConfig['timeout'] ?? $taskMeta->timeout ?? $defaultTimeout;
 
 			// Auto-cap task timeout to defaultRequeueTimeout to prevent duplicate execution
 			if ($taskTimeout > $defaultTimeout) {
@@ -151,12 +150,10 @@ class Config {
 			$config[$task]['name'] = $taskName;
 			$config[$task]['plugin'] = $pluginName;
 			$config[$task]['timeout'] = $taskTimeout;
-			$config[$task]['retries'] = $taskConfig['retries'] ?? $taskObject->retries ?? static::defaultworkerretries();
-			$config[$task]['rate'] = $taskConfig['rate'] ?? $taskObject->rate;
-			$config[$task]['costs'] = $taskConfig['costs'] ?? $taskObject->costs;
-			$config[$task]['unique'] = $taskConfig['unique'] ?? $taskObject->unique;
-
-			unset($taskObject);
+			$config[$task]['retries'] = $taskConfig['retries'] ?? $taskMeta->retries ?? static::defaultworkerretries();
+			$config[$task]['rate'] = $taskConfig['rate'] ?? $taskMeta->rate;
+			$config[$task]['costs'] = $taskConfig['costs'] ?? $taskMeta->costs;
+			$config[$task]['unique'] = $taskConfig['unique'] ?? $taskMeta->unique;
 		}
 
 		return $config;
